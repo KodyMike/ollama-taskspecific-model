@@ -64,7 +64,7 @@ Operating rules:
 
 PARAMETER temperature 0.1
 PARAMETER num_ctx 4096
-
+```
 ---
 
 ## Build and run
