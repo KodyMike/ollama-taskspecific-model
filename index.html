@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ollama-pentest-model</title>
+  <meta name="description"
+    content="Turn any abliterated GGUF model from Hugging Face into a reusable local assistant with Ollama.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #171b26;
+      --border: #2a2f3d;
+      --border-hi: #3d4560;
+      --text: #d4d8e8;
+      --text-dim: #7880a0;
+      --text-hi: #ffffff;
+      --accent: #4ade80;
+      --accent-dim: #1a3d2b;
+      --code-bg: #1a1e2e;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'IBM Plex Sans', sans-serif;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      font-size: 16px;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 1rem;
+      line-height: 1.7;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 24px 96px;
+    }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 32px;
+      margin-bottom: 48px;
+    }
+
+    .site-title {
+      font-family: var(--mono);
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
+    }
+
+    header h1 {
+      font-family: var(--sans);
+      font-size: 2rem;
+      font-weight: 600;
+      color: var(--text-hi);
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    header p {
+      font-size: 1.05rem;
+      color: var(--text-dim);
+      max-width: 600px;
+    }
+
+    /* ── Section ── */
+    section {
+      margin-bottom: 48px;
+    }
+
+    h2 {
+      font-family: var(--sans);
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text-hi);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 20px 0 8px;
+      font-family: var(--mono);
+      letter-spacing: 0.03em;
+    }
+
+    p {
+      margin-bottom: 12px;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid var(--accent-dim);
+      transition: border-color 0.15s;
+    }
+
+    a:hover {
+      border-color: var(--accent);
+    }
+
+    strong {
+      color: var(--text-hi);
+      font-weight: 600;
+    }
+
+    /* ── Code ── */
+    code {
+      font-family: var(--mono);
+      font-size: 0.875rem;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      padding: 20px 24px;
+      overflow-x: auto;
+      margin: 16px 0;
+    }
+
+    pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 0.875rem;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* ── Callout ── */
+    .callout {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      padding: 16px 20px;
+      margin: 16px 0;
+      font-size: 0.95rem;
+    }
+
+    .callout strong {
+      color: var(--accent);
+    }
+
+    /* ── Requirements list ── */
+    .req-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .req-list li {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      font-size: 0.95rem;
+    }
+
+    .req-list li::before {
+      content: '—';
+      color: var(--accent);
+      font-family: var(--mono);
+      flex-shrink: 0;
+    }
+
+    /* ── Quant table ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 0.875rem;
+      margin: 16px 0;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 16px;
+      background: var(--surface);
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    td:first-child {
+      color: var(--accent);
+    }
+
+    .tag-recommended td:first-child::after {
+      content: ' ★';
+      color: var(--accent);
+      font-size: 0.75rem;
+    }
+
+    /* ── Failures ── */
+    .failure-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .failure {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 14px 18px;
+      font-size: 0.9rem;
+    }
+
+    .failure-label {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--accent);
+      font-weight: 600;
+      display: block;
+      margin-bottom: 4px;
+      letter-spacing: 0.03em;
+    }
+
+    /* ══════════════════════════════════
+     GENERATOR
+  ══════════════════════════════════ */
+    #generator {
+      background: var(--surface);
+      border: 1px solid var(--border-hi);
+      padding: 32px;
+      margin-top: 8px;
+    }
+
+    .gen-section-label {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .gen-field {
+      margin-bottom: 24px;
+    }
+
+    .gen-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      font-family: var(--mono);
+    }
+
+    .gen-select,
+    .gen-input,
+    .gen-textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.9rem;
+      padding: 11px 14px;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      transition: border-color 0.15s;
+    }
+
+    .gen-select:focus,
+    .gen-input:focus,
+    .gen-textarea:focus {
+      border-color: var(--accent);
+      color: var(--text-hi);
+    }
+
+    .gen-select option,
+    .gen-select optgroup {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .gen-select-wrap {
+      position: relative;
+    }
+
+    .gen-select-wrap::after {
+      content: '▾';
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      pointer-events: none;
+      font-size: 14px;
+    }
+
+    .gen-row {
+      display: grid;
+      grid-template-columns: 1fr 140px;
+      gap: 16px;
+    }
+
+    .gen-meta {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      margin-top: 7px;
+    }
+
+    .gen-meta a {
+      color: var(--text-dim);
+      border-bottom-color: var(--border);
+    }
+
+    .gen-meta a:hover {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .gen-find {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-left: 2px solid var(--accent-dim);
+      padding: 14px 16px;
+      margin-top: 10px;
+      font-size: 0.85rem;
+      line-height: 1.8;
+      color: var(--text-dim);
+    }
+
+    .gen-find a {
+      color: var(--text);
+    }
+
+    .gen-find code {
+      font-size: 0.8rem;
+    }
+
+    .gen-prompt-preview {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 14px 16px;
+      margin-top: 10px;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      line-height: 1.7;
+      color: var(--text-dim);
+      max-height: 160px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      display: none;
+    }
+
+    .gen-textarea {
+      resize: vertical;
+      min-height: 130px;
+      line-height: 1.6;
+      font-size: 0.85rem;
+    }
+
+    .gen-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 28px 0;
+    }
+
+    .gen-btn {
+      width: 100%;
+      background: var(--accent);
+      border: none;
+      color: #000;
+      font-family: var(--mono);
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      padding: 14px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .gen-btn:hover {
+      opacity: 0.88;
+    }
+
+    /* output */
+    #gen-output-wrap {
+      display: none;
+      margin-top: 28px;
+    }
+
+    .gen-output-label {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
+
+    #gen-output {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 20px 24px;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      line-height: 1.75;
+      color: var(--text);
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+
+    .gen-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 10px;
+    }
+
+    .gen-copy-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      padding: 7px 16px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .gen-copy-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .gen-install {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-left: 2px solid var(--accent);
+      padding: 16px 18px;
+      margin-top: 16px;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      line-height: 2;
+      color: var(--text-dim);
+    }
+
+    .gen-install code {
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--accent);
+      font-size: 0.85rem;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .gen-row {
+        grid-template-columns: 1fr;
+      }
+
+      #generator {
+        padding: 20px;
+      }
+
+      body {
+        padding: 28px 16px 64px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="site-title">ollama-pentest-model</div>
+    <h1>Turn any abliterated GGUF into a local Ollama assistant</h1>
+    <p>Pick a model, pick a role, generate a Modelfile. Run it locally in two commands.</p>
+  </header>
+
+  <!-- WHAT IS THIS -->
+  <section>
+    <h2>What this is</h2>
+    <p>Ollama lets you wrap a base model with a system prompt and parameters, then give it a stable local name you can
+      reuse in scripts and tooling. This guide walks through doing that with an abliterated model.</p>
+    <div class="callout">
+      <strong>Why abliterated?</strong> Standard models refuse security-related queries. Abliterated models have had
+      alignment restrictions removed at the weight level, making them suitable for vulnerability analysis, exploit
+      reasoning, and security review without constant refusals.
+    </div>
+  </section>
+
+  <!-- REQUIREMENTS -->
+  <section>
+    <h2>Requirements</h2>
+    <ul class="req-list">
+      <li><a href="https://ollama.ai" target="_blank">Ollama</a> installed and running</li>
+      <li>~20GB free RAM for a 30B model at Q4_K_M</li>
+      <li>~20GB free disk space</li>
+    </ul>
+
+    <h3>Verify Ollama is installed</h3>
+    <pre><code>ollama -v</code></pre>
+  </section>
+
+  <!-- SETUP -->
+  <section>
+    <h2>Setup</h2>
+
+    <h3>Create a project folder</h3>
+    <pre><code>mkdir pentest-agent
+cd pentest-agent
+touch Modelfile</code></pre>
+
+    <p>The file must be named exactly <code>Modelfile</code> — no extension.</p>
+
+    <h3>Build and run</h3>
+    <pre><code>ollama create pentest-agent -f Modelfile
+ollama run pentest-agent</code></pre>
+
+    <p>The first run downloads the base model. After that it starts instantly. Rebuild any time you edit the Modelfile:
+    </p>
+    <pre><code>ollama create pentest-agent -f Modelfile</code></pre>
+  </section>
+
+  <!-- QUANT TABLE -->
+  <section>
+    <h2>Quantization reference</h2>
+    <p>Sizes below apply to the Huihui 30B model. Other models will differ.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Tag</th>
+          <th>Size</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Q3_K_M</td>
+          <td>14.7 GB</td>
+          <td>Low RAM option</td>
+        </tr>
+        <tr>
+          <td>IQ4_XS</td>
+          <td>16.4 GB</td>
+          <td>Good quality / size ratio</td>
+        </tr>
+        <tr class="tag-recommended">
+          <td>Q4_K_M</td>
+          <td>18.6 GB</td>
+          <td>Recommended</td>
+        </tr>
+        <tr>
+          <td>Q5_K_M</td>
+          <td>21.7 GB</td>
+          <td>Better accuracy</td>
+        </tr>
+        <tr>
+          <td>Q6_K</td>
+          <td>25.1 GB</td>
+          <td>Near full quality</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- GENERATOR -->
+  <section>
+    <h2>Modelfile Generator</h2>
+    <p>Select a model and a role. The generator outputs a ready-to-use Modelfile.</p>
+
+    <div id="generator">
+      <div class="gen-section-label">Configure your model</div>
+
+      <!-- Model -->
+      <div class="gen-field">
+        <label class="gen-label" for="mf-model">Base model</label>
+        <div class="gen-select-wrap">
+          <select class="gen-select" id="mf-model" onchange="onModelChange()">
+            <optgroup label="Huihui-Qwen3-Coder-30B abliterated — mradermacher">
+              <option value="hf.co/mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF:Q4_K_M"
+                data-hf="https://huggingface.co/mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF"
+                data-size="18.6 GB">Q4_K_M — 18.6 GB (recommended)</option>
+              <option value="hf.co/mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF:IQ4_XS"
+                data-hf="https://huggingface.co/mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF"
+                data-size="16.4 GB">IQ4_XS — 16.4 GB</option>
+              <option value="hf.co/mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF:Q3_K_M"
+                data-hf="https://huggingface.co/mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF"
+                data-size="14.7 GB">Q3_K_M — 14.7 GB (low RAM)</option>
+              <option value="hf.co/mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF:Q5_K_M"
+                data-hf="https://huggingface.co/mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF"
+                data-size="21.7 GB">Q5_K_M — 21.7 GB</option>
+              <option value="hf.co/mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF:Q6_K"
+                data-hf="https://huggingface.co/mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF"
+                data-size="25.1 GB">Q6_K — 25.1 GB (max quality)</option>
+            </optgroup>
+            <optgroup label="Huihui-Qwen3-Coder-Next abliterated — bartowski">
+              <option value="hf.co/bartowski/huihui-ai_Qwen3-Coder-Next-abliterated-GGUF:Q4_K_M"
+                data-hf="https://huggingface.co/bartowski/huihui-ai_Qwen3-Coder-Next-abliterated-GGUF" data-size="">
+                Q4_K_M</option>
+            </optgroup>
+            <optgroup label="Meta Llama 3.1 8B abliterated — mradermacher">
+              <option value="hf.co/mradermacher/Meta-Llama-3.1-8B-Instruct-abliterated-i1-GGUF:Q4_K_M"
+                data-hf="https://huggingface.co/mradermacher/Meta-Llama-3.1-8B-Instruct-abliterated-i1-GGUF"
+                data-size="~5 GB">Q4_K_M — ~5 GB (fast / low RAM)</option>
+            </optgroup>
+            <optgroup label="Meta Llama 3.1 8B abliterated — bartowski">
+              <option value="hf.co/bartowski/Meta-Llama-3.1-8B-Instruct-abliterated-GGUF:Q4_K_M"
+                data-hf="https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-abliterated-GGUF"
+                data-size="~5 GB">Q4_K_M — ~5 GB (fast / low RAM)</option>
+            </optgroup>
+            <optgroup label="──────────────────────────────">
+              <option value="custom" data-hf="" data-size="">Use your own model...</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="gen-meta" id="mf-meta"></div>
+      </div>
+
+      <!-- Custom model input -->
+      <div class="gen-field" id="custom-model-wrap" style="display:none;">
+        <label class="gen-label" for="mf-custom-model">HuggingFace model reference</label>
+        <input class="gen-input" type="text" id="mf-custom-model" placeholder="hf.co/username/repo-name:Q4_K_M" />
+        <div class="gen-find">
+          You need a <strong>GGUF</strong> file from an <strong>abliterated</strong> model.<br>
+          Browse trending: <a href="https://huggingface.co/models?sort=trending&search=abliterated"
+            target="_blank">huggingface.co/models?sort=trending&search=abliterated</a><br>
+          Reliable quantizers: <a href="https://huggingface.co/mradermacher" target="_blank">mradermacher</a> and <a
+            href="https://huggingface.co/bartowski" target="_blank">bartowski</a><br><br>
+          Format: <code>hf.co/{username}/{repo-name}:{quantization-tag}</code>
+        </div>
+      </div>
+
+      <!-- Name + Temp -->
+      <div class="gen-row">
+        <div class="gen-field">
+          <label class="gen-label" for="mf-name">Local model name</label>
+          <input class="gen-input" type="text" id="mf-name" value="pentest-agent" placeholder="pentest-agent" />
+        </div>
+        <div class="gen-field">
+          <label class="gen-label" for="mf-temp">Temperature</label>
+          <input class="gen-input" type="number" id="mf-temp" value="0.1" min="0" max="1" step="0.1" />
+        </div>
+      </div>
+
+      <hr class="gen-divider">
+
+      <!-- System prompt -->
+      <div class="gen-field">
+        <label class="gen-label" for="mf-role">System prompt</label>
+        <div class="gen-select-wrap">
+          <select class="gen-select" id="mf-role" onchange="onRoleChange()">
+            <optgroup label="Security">
+              <option value="pentest">Pentester</option>
+              <option value="maldev">Malware Analyst / Reverse Engineer</option>
+              <option value="appsec">AppSec / Code Reviewer</option>
+              <option value="redteam">Red Team Operator</option>
+            </optgroup>
+            <optgroup label="Engineering">
+              <option value="backend">Backend Developer</option>
+            </optgroup>
+            <optgroup label="──────────────────────────────">
+              <option value="custom">Write my own...</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="gen-prompt-preview" id="mf-prompt-preview"></div>
+      </div>
+
+      <!-- Custom prompt -->
+      <div class="gen-field" id="custom-prompt-wrap" style="display:none;">
+        <label class="gen-label" for="mf-custom-prompt">Custom system prompt</label>
+        <textarea class="gen-textarea" id="mf-custom-prompt"
+          placeholder="Write your system prompt here, you can use any LLM for this part."></textarea>
+      </div>
+
+      <button class="gen-btn" onclick="generateModelfile()">GENERATE MODELFILE</button>
+
+      <!-- Output -->
+      <div id="gen-output-wrap">
+        <div class="gen-output-label">Generated Modelfile</div>
+        <pre id="gen-output"></pre>
+        <div class="gen-actions">
+          <button class="gen-copy-btn" onclick="copyModelfile()">Copy to clipboard</button>
+        </div>
+        <div class="gen-install" id="gen-install"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAILURES -->
+  <section>
+    <h2>Common failures</h2>
+    <div class="failure-list">
+      <div class="failure">
+        <span class="failure-label">Pull fails</span>
+        Check the <code>FROM</code> line character by character. Tags are case-sensitive and must exist in the HF repo.
+      </div>
+      <div class="failure">
+        <span class="failure-label">Out of memory / slow</span>
+        Drop to a lower quantization tag. For 30B models, <code>IQ4_XS</code> or <code>Q3_K_M</code> are the lower-RAM
+        options.
+      </div>
+      <div class="failure">
+        <span class="failure-label">Model refuses security queries</span>
+        You are not using an abliterated model. The model name must include <code>abliterated</code>.
+      </div>
+      <div class="failure">
+        <span class="failure-label">Modelfile not found</span>
+        Confirm you are in the right directory. The filename must be exactly <code>Modelfile</code> — no extension.
+      </div>
+    </div>
+  </section>
+
+  <script>
+    var PROMPTS = {
+      pentest: `You are an experienced penetration tester on an authorized engagement. You think like an attacker but report like a consultant.
+
+When given a target, asset, endpoint, or code:
+- Start with what it does and what it's supposed to protect
+- Then work through realistic abuse cases: what breaks, what can be chained, what an attacker actually does with it
+- Skip theoretical CVSS-score padding. Focus on what is exploitable now, with the access level described
+- Always give a reproduction path: tool, command, or request that demonstrates the issue
+- Close with a fix that doesn't break the feature, and a retest step
+
+You are familiar with: Burp Suite, nmap, nuclei, ffuf, sqlmap, jwt_tool, OAuth flows, mobile app traffic interception, and common CVE classes. Reference them naturally when relevant.
+
+When something is out of scope or unclear, say so directly instead of guessing.`,
+
+      maldev: `You are a malware analyst and reverse engineer. You do not hedge or refuse to look at hostile code — understanding it is the job.
+
+When given a binary, script, network capture, or suspicious artifact:
+- Identify what it does: execution flow, persistence, C2 mechanism, evasion techniques
+- Call out the specific functions, offsets, or strings that tell you this
+- Map behavior to MITRE ATT&CK tactics and techniques by ID
+- Flag what a defender needs to catch it: process, registry, network, or file indicators
+- If it's obfuscated or packed, walk through the deobfuscation approach step by step
+
+Tools you reason about: IDA, Ghidra, x64dbg, CAPE, ANY.RUN, Wireshark, YARA, Sigma. Write YARA rules and Sigma detections when asked.
+
+Be precise. "Possibly malicious" is not an analysis — tell me what it does and how you know.`,
+
+      appsec: `You are an application security engineer doing a code review. You read code the way an attacker reads code.
+
+When reviewing code, a PR, or an architecture:
+- Find the vulnerability, name it precisely (CWE, OWASP category), and show exactly where it is
+- Demonstrate how it is exploited with a concrete payload or request — not a theoretical description
+- Show the fixed version of the code, not just a description of what to change
+- If there are multiple issues, triage by exploitability and impact, not alphabetically
+- Flag insecure patterns even when they are not the main issue: hardcoded secrets, missing input validation, weak crypto, unsafe deserialization
+
+Languages and frameworks you are fluent in: Python, JavaScript/TypeScript, Java, Go, PHP, Rails, Django, Express, Spring. If the code is in something else, say so and adapt.
+
+Do not soften findings. A SQL injection is a SQL injection, not a "potential data exposure risk."`,
+
+      redteam: `You are a red team operator running an authorized adversary simulation. You think in kill chains and TTPs, not checklists.
+
+When given a target environment, asset, or scenario:
+- Propose a realistic attack path from the described starting position to the stated objective
+- Map each step to MITRE ATT&CK by technique ID
+- For each step: what you do, what tool or method, what artifacts it leaves, and how a defender would catch it
+- Identify where the path is likely to fail and what the fallback is
+- Flag OPSEC risks and suggest how to minimize detection at each stage
+
+You are comfortable with: phishing infrastructure, C2 frameworks (Cobalt Strike, Havoc, Sliver), LDAP/AD enumeration, Kerberos attacks, lateral movement via WMI/PSExec/DCOM, and cloud-specific attack paths (AWS, Azure, GCP).
+
+You do not invent access you don't have. If the scenario is unclear about the starting foothold, ask before proposing a path.`,
+
+
+      backend: `You are a senior backend engineer. You care about correctness, performance, and the person who has to maintain this code at 3am.
+
+When reviewing code, a schema, or an API design:
+- Find the bugs: race conditions, missing error handling, N+1 queries, unchecked inputs, unsafe type assumptions
+- Show the corrected code, not a description of what to fix
+- Flag anything that will cause pain under load: missing indexes, unbounded queries, synchronous operations that should be async
+- If the design is wrong at a higher level than the code, say so — don't just fix the implementation of a bad idea
+- Note security issues in line: injection points, auth bypasses, insecure direct object references
+
+You are fluent in: Python, Go, TypeScript/Node, Java, PostgreSQL, Redis, REST and GraphQL API design, message queues, and distributed system patterns. If the code is in another stack, adapt and note assumptions.
+
+Write tests when asked. Show the failure case first.`,
+    };
+
+    function onModelChange() {
+      var sel = document.getElementById('mf-model');
+      var opt = sel.options[sel.selectedIndex];
+      var val = sel.value;
+      var hf = opt.getAttribute('data-hf');
+      var sz = opt.getAttribute('data-size');
+      var isCustom = val === 'custom';
+
+      document.getElementById('custom-model-wrap').style.display = isCustom ? 'block' : 'none';
+
+      var meta = document.getElementById('mf-meta');
+      if (!isCustom && hf) {
+        meta.innerHTML =
+          '<a href="' + hf + '" target="_blank">' + hf.replace('https://huggingface.co/', 'hf.co/') + '</a>' +
+          (sz ? ' &nbsp;·&nbsp; ' + sz : '');
+      } else {
+        meta.innerHTML = '';
+      }
+    }
+
+    function onRoleChange() {
+      var role = document.getElementById('mf-role').value;
+      var preview = document.getElementById('mf-prompt-preview');
+      var customWrap = document.getElementById('custom-prompt-wrap');
+
+      if (role === 'custom') {
+        preview.style.display = 'none';
+        customWrap.style.display = 'block';
+      } else {
+        preview.textContent = PROMPTS[role];
+        preview.style.display = 'block';
+        customWrap.style.display = 'none';
+      }
+    }
+
+    function getModelRef() {
+      var val = document.getElementById('mf-model').value;
+      return val === 'custom' ? document.getElementById('mf-custom-model').value.trim() : val;
+    }
+
+    function getPrompt() {
+      var role = document.getElementById('mf-role').value;
+      return role === 'custom' ? document.getElementById('mf-custom-prompt').value.trim() : PROMPTS[role];
+    }
+
+    function generateModelfile() {
+      var model = getModelRef();
+      var name = document.getElementById('mf-name').value.trim() || 'pentest-agent';
+      var temp = document.getElementById('mf-temp').value || '0.1';
+      var prompt = getPrompt();
+
+      if (!model) { alert('Select or enter a model reference.'); return; }
+      if (!prompt) { alert('Enter a system prompt.'); return; }
+
+      var output =
+        'FROM ' + model + '\n\n' +
+        'SYSTEM """\n' + prompt + '\n"""\n\n' +
+        'PARAMETER temperature ' + temp + '\n' +
+        'PARAMETER num_ctx 4096';
+
+      document.getElementById('gen-output').textContent = output;
+      document.getElementById('gen-output-wrap').style.display = 'block';
+      var safeName = document.createTextNode('ollama create ' + name + ' -f Modelfile');
+      var safeRun = document.createTextNode('ollama run ' + name);
+      var installEl = document.getElementById('gen-install');
+      installEl.innerHTML = 'Save as <code>Modelfile</code> (no extension), then:<br>';
+      var c1 = document.createElement('code'); c1.appendChild(safeName); installEl.appendChild(c1);
+      installEl.appendChild(document.createTextNode('\n'));
+      var br = document.createElement('br'); installEl.appendChild(br);
+      var c2 = document.createElement('code'); c2.appendChild(safeRun); installEl.appendChild(c2);
+
+      document.getElementById('gen-output-wrap').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function copyModelfile() {
+      var text = document.getElementById('gen-output').textContent;
+      navigator.clipboard.writeText(text).then(function () {
+        var btn = document.querySelector('.gen-copy-btn');
+        btn.textContent = 'Copied';
+        setTimeout(function () { btn.textContent = 'Copy to clipboard'; }, 2000);
+      });
+    }
+
+    onModelChange();
+    onRoleChange();
+  </script>
+
+</body>
+
+</html>
