@@ -545,30 +545,10 @@
     <pre><code>ollama -v</code></pre>
   </section>
 
-  <!-- SETUP -->
-  <section>
-    <h2>Setup</h2>
-
-    <h3>Create a project folder</h3>
-    <pre><code>mkdir pentest-agent
-cd pentest-agent
-touch Modelfile</code></pre>
-
-    <p>The file must be named exactly <code>Modelfile</code> — no extension.</p>
-
-    <h3>Build and run</h3>
-    <pre><code>ollama create pentest-agent -f Modelfile
-ollama run pentest-agent</code></pre>
-
-    <p>The first run downloads the base model. After that it starts instantly. Rebuild any time you edit the Modelfile:
-    </p>
-    <pre><code>ollama create pentest-agent -f Modelfile</code></pre>
-  </section>
-
   <!-- QUANT TABLE -->
   <section>
     <h2>Quantization reference</h2>
-    <p>Sizes below apply to the Huihui 30B model. Other models will differ.</p>
+    <p>Pick a quantization based on your available RAM. Sizes below apply to the Huihui 30B model.</p>
     <table>
       <thead>
         <tr>
@@ -610,7 +590,7 @@ ollama run pentest-agent</code></pre>
   <!-- GENERATOR -->
   <section>
     <h2>Modelfile Generator</h2>
-    <p>Select a model and a role. The generator outputs a ready-to-use Modelfile.</p>
+    <p>Choose a base model and a role, then click <strong>Generate</strong>. Copy the output — you'll use it in the next step.</p>
 
     <div id="generator">
       <div class="gen-section-label">Configure your model</div>
@@ -729,6 +709,26 @@ ollama run pentest-agent</code></pre>
         <div class="gen-install" id="gen-install"></div>
       </div>
     </div>
+  </section>
+
+  <!-- SETUP -->
+  <section>
+    <h2>Setup</h2>
+
+    <h3>1. Create a project folder</h3>
+    <pre><code>mkdir pentest-agent
+cd pentest-agent</code></pre>
+
+    <h3>2. Save your Modelfile</h3>
+    <p>Paste the generated content above into a new file in that folder. The filename must be exactly <code>Modelfile</code> — no extension.</p>
+
+    <h3>3. Build and run</h3>
+    <pre><code>ollama create pentest-agent -f Modelfile
+ollama run pentest-agent</code></pre>
+
+    <p>The first run pulls the base model from Hugging Face. After that it starts instantly.</p>
+    <p>To apply changes after editing the Modelfile, re-run the create command:</p>
+    <pre><code>ollama create pentest-agent -f Modelfile</code></pre>
   </section>
 
   <!-- FAILURES -->
