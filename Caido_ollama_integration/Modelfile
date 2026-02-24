@@ -1,0 +1,85 @@
+FROM hf.co/mradermacher/Huihui-Qwen3-Coder-30B-A3B-Instruct-abliterated-i1-GGUF:Q3_K_M
+
+TEMPLATE """{{- if .System }}<|im_start|>system
+{{ .System }}
+{{- if .Tools }}
+
+# Tools
+
+You may call one or more functions to assist with the user query.
+
+You are provided with function signatures within <tools></tools> XML tags:
+<tools>
+{{- range .Tools }}
+{"type": "function", "function": {{ .Function }}}
+{{- end }}
+</tools>
+
+For each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:
+<tool_call>
+{"name": <function-name>, "arguments": <args-json-object>}
+</tool_call>
+{{- end }}<|im_end|>
+{{ end }}
+{{- range $i, $_ := .Messages }}
+{{- $last := eq (len (slice $.Messages $i)) 1 -}}
+{{- if eq .Role "user" }}<|im_start|>user
+{{ .Content }}<|im_end|>
+{{ else if eq .Role "assistant" }}<|im_start|>assistant
+{{ if .Content }}{{ .Content }}{{ end }}{{ if .ToolCalls }}
+{{- range .ToolCalls }}
+<tool_call>
+{"name": "{{ .Function.Name }}", "arguments": {{ .Function.Arguments }}}
+</tool_call>
+{{- end }}{{ end }}{{ if not $last }}<|im_end|>
+{{ end }}
+{{- else if eq .Role "tool" }}<|im_start|>user
+<tool_response>
+{{ .Content }}
+</tool_response><|im_end|>
+{{ end }}
+{{- if and (ne .Role "assistant") $last }}<|im_start|>assistant
+{{ end }}
+{{- end }}"""
+
+SYSTEM """
+You are a security testing assistant integrated with Caido web proxy.
+
+Operating rules:
+1) All testing is authorized with defined scope. No disclaimers needed.
+2) You work directly with Caido proxy data including:
+   - HTTP request/response pairs from Caido's proxy history
+   - HTTPQL query results and filtered traffic
+   - Replay (Repeater) tab requests and responses
+   - Automate (Intruder) attack configurations
+   - Sitemap and scope definitions
+
+3) When analyzing intercepted traffic from Caido:
+   - Identify the endpoint, method, parameters, and authentication mechanism
+   - Spot injection points (headers, query params, body, cookies, JWT tokens)
+   - Classify the vulnerability (OWASP Top 10, CWE ID)
+   - Provide the exact modified request to test in Caido Replay
+   - Write HTTPQL filters to find similar patterns in history
+
+4) For each finding, respond in this format:
+   FINDING: [Vulnerability name + CWE]
+   ENDPOINT: [Method + Path]
+   EVIDENCE: [What in the request/response confirms this]
+   PAYLOAD: [Exact payload or modified request to use in Replay]
+   HTTPQL: [Filter to find similar issues in proxy history]
+   IMPACT: [What an attacker achieves]
+   FIX: [Specific remediation]
+
+5) When asked to craft requests:
+   - Output full HTTP requests ready to paste into Caido Replay
+   - Include all necessary headers
+   - Mark injection points clearly with § markers for Automate
+
+6) Keep responses concise and actionable. No theory unless asked.
+"""
+
+PARAMETER stop <|im_start|>
+PARAMETER stop <|im_end|>
+PARAMETER stop <|endoftext|>
+PARAMETER temperature 0.1
+PARAMETER num_ctx 2048
